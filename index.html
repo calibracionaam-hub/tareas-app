@@ -3,89 +3,168 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tareas</title>
+<title>Action Log RMC-2</title>
 <link rel="manifest" href="manifest.json">
+
 <style>
-body {
+:root{
+    --bg:#121212;
+    --card:#1e1e1e;
+    --accent:#00bcd4;
+    --text:#e0e0e0;
+    --muted:#9e9e9e;
+    --ok:#4caf50;
+}
+
+body{
+    margin:0;
     font-family: Arial, sans-serif;
-    margin: 0;
-    background: #f2f2f2;
+    background:var(--bg);
+    color:var(--text);
 }
 
-header {
-    background: #007bff;
-    color: white;
-    padding: 15px;
-    text-align: center;
-    font-size: 18px;
+header{
+    background:#000;
+    padding:15px;
+    text-align:center;
+    font-size:18px;
+    font-weight:bold;
+    border-bottom:2px solid var(--accent);
 }
 
-form {
-    background: white;
-    padding: 15px;
+form, .filtro, .dashboard{
+    background:var(--card);
+    padding:15px;
+    margin:10px;
+    border-radius:8px;
 }
 
-input, textarea, button {
-    width: 100%;
-    margin-bottom: 10px;
-    padding: 10px;
-    font-size: 16px;
+input, textarea, select, button{
+    width:100%;
+    margin-bottom:10px;
+    padding:10px;
+    font-size:15px;
+    background:#2b2b2b;
+    color:var(--text);
+    border:1px solid #444;
+    border-radius:5px;
 }
 
-button {
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
+button{
+    background:var(--accent);
+    color:#000;
+    font-weight:bold;
+    border:none;
 }
 
-.tareas {
-    padding: 10px;
+.dashboard{
+    display:grid;
+    grid-template-columns: repeat(2,1fr);
+    gap:10px;
+    text-align:center;
 }
 
-.tarea {
-    background: white;
-    margin-bottom: 10px;
-    padding: 10px;
-    border-radius: 6px;
+.card{
+    background:#000;
+    padding:10px;
+    border-radius:6px;
 }
 
-.tarea img {
-    width: 100%;
-    border-radius: 5px;
+.card h2{
+    margin:5px 0;
+    color:var(--accent);
 }
 
-.fecha {
-    font-size: 13px;
-    color: #555;
+.tareas{
+    padding:10px;
+}
+
+.tarea{
+    background:var(--card);
+    margin-bottom:12px;
+    padding:12px;
+    border-radius:8px;
+    border-left:4px solid var(--accent);
+}
+
+.tarea.cerrada{
+    opacity:0.6;
+    border-left:4px solid var(--ok);
+}
+
+.tarea img{
+    width:100%;
+    border-radius:6px;
+    margin-bottom:8px;
+}
+
+.fecha{
+    font-size:13px;
+    color:var(--muted);
+}
+
+.cerrar{
+    background:var(--ok);
+    margin-top:8px;
 }
 </style>
 </head>
+
 <body>
 
-<header>Asignación de Tareas</header>
+<header>Action Log Laboratorio RMC-2</header>
+
+<div class="dashboard" id="dashboard"></div>
 
 <form id="form">
-    <input id="titulo" placeholder="Título" required>
-    <input id="responsable" placeholder="Responsable" required>
-    <textarea id="descripcion" placeholder="Descripción" required></textarea>
+    <input id="titulo" placeholder="Título de la tarea" required>
+
+    <select id="responsable" required>
+        <option value="">Responsable</option>
+        <option>Nicte Gaona</option>
+        <option>Sergio Perez</option>
+        <option>Pablo Rodriguez</option>
+        <option>Daniel Reyes</option>
+        <option>Pablo Amador</option>
+        <option>David Garcia</option>
+        <option>Josué Valdés</option>
+    </select>
+
+    <textarea id="descripcion" placeholder="Descripción breve" required></textarea>
     <input type="date" id="fecha" required>
     <input type="file" id="imagen" accept="image/*" capture="environment">
     <button>Agregar tarea</button>
 </form>
+
+<div class="filtro">
+    <select id="filtroResponsable" onchange="mostrar()">
+        <option value="">Ver pendientes por responsable</option>
+        <option>Nicte Gaona</option>
+        <option>Sergio Perez</option>
+        <option>Pablo Rodriguez</option>
+        <option>Daniel Reyes</option>
+        <option>Pablo Amador</option>
+        <option>David Garcia</option>
+        <option>Josué Valdés</option>
+    </select>
+</div>
 
 <div class="tareas" id="lista"></div>
 
 <script>
 let tareas = JSON.parse(localStorage.getItem("tareas")) || [];
 const lista = document.getElementById("lista");
+const dashboard = document.getElementById("dashboard");
 
-mostrar();
+// PERMISO NOTIFICACIONES
+if ("Notification" in window && Notification.permission !== "granted") {
+    Notification.requestPermission();
+}
 
 document.getElementById("form").addEventListener("submit", e => {
     e.preventDefault();
-    const file = imagen.files[0];
     const reader = new FileReader();
+    const file = imagen.files[0];
 
     reader.onload = () => {
         tareas.push({
@@ -93,32 +172,82 @@ document.getElementById("form").addEventListener("submit", e => {
             responsable: responsable.value,
             descripcion: descripcion.value,
             fecha: fecha.value,
-            imagen: reader.result || ""
+            imagen: reader.result || "",
+            estado: "Pendiente",
+            notificado:false
         });
-        localStorage.setItem("tareas", JSON.stringify(tareas));
-        mostrar();
+        guardar();
         e.target.reset();
     };
-
-    if (file) reader.readAsDataURL(file);
+    if(file) reader.readAsDataURL(file);
     else reader.onload();
 });
 
-function mostrar() {
+function cerrarTarea(i){
+    tareas[i].estado = "Cerrada";
+    guardar();
+}
+
+function guardar(){
+    localStorage.setItem("tareas", JSON.stringify(tareas));
+    mostrar();
+    actualizarDashboard();
+}
+
+function actualizarDashboard(){
+    const total = tareas.length;
+    const pendientes = tareas.filter(t=>t.estado==="Pendiente").length;
+    const cerradas = tareas.filter(t=>t.estado==="Cerrada").length;
+
+    dashboard.innerHTML = `
+        <div class="card"><h2>${total}</h2>Total</div>
+        <div class="card"><h2>${pendientes}</h2>Pendientes</div>
+        <div class="card"><h2>${cerradas}</h2>Cerradas</div>
+        <div class="card"><h2>${new Set(tareas.map(t=>t.responsable)).size}</h2>Responsables</div>
+    `;
+}
+
+function mostrar(){
+    const filtro = document.getElementById("filtroResponsable").value;
     lista.innerHTML = "";
-    tareas.forEach(t => {
+
+    tareas.forEach((t,i)=>{
+        if(t.estado==="Pendiente" && filtro && t.responsable!==filtro) return;
+
         lista.innerHTML += `
-        <div class="tarea">
+        <div class="tarea ${t.estado==="Cerrada"?"cerrada":""}">
             ${t.imagen ? `<img src="${t.imagen}">` : ""}
             <h3>${t.titulo}</h3>
             <p><b>${t.responsable}</b></p>
             <p>${t.descripcion}</p>
             <p class="fecha">Cierre: ${t.fecha}</p>
+            ${t.estado==="Pendiente" ? `<button class="cerrar" onclick="cerrarTarea(${i})">Cerrar tarea</button>` : ""}
         </div>`;
     });
 }
 
-if ("serviceWorker" in navigator) {
+// NOTIFICACIÓN 1 DÍA ANTES
+setInterval(()=>{
+    const hoy = new Date().toISOString().split("T")[0];
+    tareas.forEach(t=>{
+        const aviso = new Date(t.fecha);
+        aviso.setDate(aviso.getDate()-1);
+        const avisoStr = aviso.toISOString().split("T")[0];
+
+        if(t.estado==="Pendiente" && !t.notificado && avisoStr===hoy){
+            new Notification("Tarea por vencer",{
+                body:`${t.titulo} - Responsable: ${t.responsable}`
+            });
+            t.notificado = true;
+            guardar();
+        }
+    });
+}, 60000);
+
+mostrar();
+actualizarDashboard();
+
+if("serviceWorker" in navigator){
     navigator.serviceWorker.register("sw.js");
 }
 </script>
