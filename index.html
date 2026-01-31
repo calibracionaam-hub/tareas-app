@@ -13,7 +13,6 @@
     --accent:#00bcd4;
     --text:#e0e0e0;
     --muted:#9e9e9e;
-    --ok:#4caf50;
 }
 
 body{
@@ -59,7 +58,7 @@ button{
 
 .dashboard{
     display:grid;
-    grid-template-columns: repeat(2,1fr);
+    grid-template-columns: repeat(3,1fr);
     gap:10px;
     text-align:center;
 }
@@ -87,11 +86,6 @@ button{
     border-left:4px solid var(--accent);
 }
 
-.tarea.cerrada{
-    opacity:0.6;
-    border-left:4px solid var(--ok);
-}
-
 .tarea img{
     width:100%;
     border-radius:6px;
@@ -104,7 +98,7 @@ button{
 }
 
 .cerrar{
-    background:var(--ok);
+    background:#4caf50;
     margin-top:8px;
 }
 </style>
@@ -126,7 +120,6 @@ button{
         <option>Pablo Rodriguez</option>
         <option>Daniel Reyes</option>
         <option>Pablo Amador</option>
-        <option>Carlos Hernandez</option>
         <option>David Garcia</option>
         <option>Josué Valdés</option>
     </select>
@@ -145,7 +138,6 @@ button{
         <option>Pablo Rodriguez</option>
         <option>Daniel Reyes</option>
         <option>Pablo Amador</option>
-        <option>Carlos Hernandez</option>
         <option>David Garcia</option>
         <option>Josué Valdés</option>
     </select>
@@ -158,13 +150,14 @@ let tareas = JSON.parse(localStorage.getItem("tareas")) || [];
 const lista = document.getElementById("lista");
 const dashboard = document.getElementById("dashboard");
 
-// PERMISO NOTIFICACIONES
+// Solicitar permiso notificaciones
 if ("Notification" in window && Notification.permission !== "granted") {
     Notification.requestPermission();
 }
 
 document.getElementById("form").addEventListener("submit", e => {
     e.preventDefault();
+
     const reader = new FileReader();
     const file = imagen.files[0];
 
@@ -175,18 +168,18 @@ document.getElementById("form").addEventListener("submit", e => {
             descripcion: descripcion.value,
             fecha: fecha.value,
             imagen: reader.result || "",
-            estado: "Pendiente",
             notificado:false
         });
         guardar();
         e.target.reset();
     };
+
     if(file) reader.readAsDataURL(file);
     else reader.onload();
 });
 
-function cerrarTarea(i){
-    tareas[i].estado = "Cerrada";
+function cerrarTarea(index){
+    tareas.splice(index,1); // 🔥 ELIMINA la tarea cerrada
     guardar();
 }
 
@@ -198,14 +191,12 @@ function guardar(){
 
 function actualizarDashboard(){
     const total = tareas.length;
-    const pendientes = tareas.filter(t=>t.estado==="Pendiente").length;
-    const cerradas = tareas.filter(t=>t.estado==="Cerrada").length;
+    const responsables = [...new Set(tareas.map(t=>t.responsable))].length;
 
     dashboard.innerHTML = `
-        <div class="card"><h2>${total}</h2>Total</div>
-        <div class="card"><h2>${pendientes}</h2>Pendientes</div>
-        <div class="card"><h2>${cerradas}</h2>Cerradas</div>
-        <div class="card"><h2>${new Set(tareas.map(t=>t.responsable)).size}</h2>Responsables</div>
+        <div class="card"><h2>${total}</h2>Pendientes</div>
+        <div class="card"><h2>${responsables}</h2>Responsables</div>
+        <div class="card"><h2>${new Date().toLocaleDateString()}</h2>Hoy</div>
     `;
 }
 
@@ -214,21 +205,21 @@ function mostrar(){
     lista.innerHTML = "";
 
     tareas.forEach((t,i)=>{
-        if(t.estado==="Pendiente" && filtro && t.responsable!==filtro) return;
+        if(filtro && t.responsable !== filtro) return;
 
         lista.innerHTML += `
-        <div class="tarea ${t.estado==="Cerrada"?"cerrada":""}">
+        <div class="tarea">
             ${t.imagen ? `<img src="${t.imagen}">` : ""}
             <h3>${t.titulo}</h3>
             <p><b>${t.responsable}</b></p>
             <p>${t.descripcion}</p>
             <p class="fecha">Cierre: ${t.fecha}</p>
-            ${t.estado==="Pendiente" ? `<button class="cerrar" onclick="cerrarTarea(${i})">Cerrar tarea</button>` : ""}
+            <button class="cerrar" onclick="cerrarTarea(${i})">Cerrar tarea</button>
         </div>`;
     });
 }
 
-// NOTIFICACIÓN 1 DÍA ANTES
+// Notificación 1 día antes
 setInterval(()=>{
     const hoy = new Date().toISOString().split("T")[0];
     tareas.forEach(t=>{
@@ -236,15 +227,15 @@ setInterval(()=>{
         aviso.setDate(aviso.getDate()-1);
         const avisoStr = aviso.toISOString().split("T")[0];
 
-        if(t.estado==="Pendiente" && !t.notificado && avisoStr===hoy){
+        if(!t.notificado && avisoStr === hoy){
             new Notification("Tarea por vencer",{
-                body:`${t.titulo} - Responsable: ${t.responsable}`
+                body:`${t.titulo} - ${t.responsable}`
             });
             t.notificado = true;
             guardar();
         }
     });
-}, 60000);
+},60000);
 
 mostrar();
 actualizarDashboard();
