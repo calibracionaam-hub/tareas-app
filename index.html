@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tareas</title>
+<link rel="manifest" href="manifest.json">
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f2f2f2;
+}
+
+header {
+    background: #007bff;
+    color: white;
+    padding: 15px;
+    text-align: center;
+    font-size: 18px;
+}
+
+form {
+    background: white;
+    padding: 15px;
+}
+
+input, textarea, button {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 10px;
+    font-size: 16px;
+}
+
+button {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+.tareas {
+    padding: 10px;
+}
+
+.tarea {
+    background: white;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 6px;
+}
+
+.tarea img {
+    width: 100%;
+    border-radius: 5px;
+}
+
+.fecha {
+    font-size: 13px;
+    color: #555;
+}
+</style>
+</head>
+<body>
+
+<header>Asignación de Tareas</header>
+
+<form id="form">
+    <input id="titulo" placeholder="Título" required>
+    <input id="responsable" placeholder="Responsable" required>
+    <textarea id="descripcion" placeholder="Descripción" required></textarea>
+    <input type="date" id="fecha" required>
+    <input type="file" id="imagen" accept="image/*" capture="environment">
+    <button>Agregar tarea</button>
+</form>
+
+<div class="tareas" id="lista"></div>
+
+<script>
+let tareas = JSON.parse(localStorage.getItem("tareas")) || [];
+const lista = document.getElementById("lista");
+
+mostrar();
+
+document.getElementById("form").addEventListener("submit", e => {
+    e.preventDefault();
+    const file = imagen.files[0];
+    const reader = new FileReader();
+
+    reader.onload = () => {
+        tareas.push({
+            titulo: titulo.value,
+            responsable: responsable.value,
+            descripcion: descripcion.value,
+            fecha: fecha.value,
+            imagen: reader.result || ""
+        });
+        localStorage.setItem("tareas", JSON.stringify(tareas));
+        mostrar();
+        e.target.reset();
+    };
+
+    if (file) reader.readAsDataURL(file);
+    else reader.onload();
+});
+
+function mostrar() {
+    lista.innerHTML = "";
+    tareas.forEach(t => {
+        lista.innerHTML += `
+        <div class="tarea">
+            ${t.imagen ? `<img src="${t.imagen}">` : ""}
+            <h3>${t.titulo}</h3>
+            <p><b>${t.responsable}</b></p>
+            <p>${t.descripcion}</p>
+            <p class="fecha">Cierre: ${t.fecha}</p>
+        </div>`;
+    });
+}
+
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>
